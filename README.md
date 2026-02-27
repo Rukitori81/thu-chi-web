@@ -1,1 +1,305 @@
-# thu-chi-web
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Quản Lý Thu Chi</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+}
+
+/* LOGIN */
+#loginBox{
+    width:300px;
+    margin:auto;
+    margin-top:80px;
+    padding:20px;
+    background:#222;
+    border-radius:10px;
+}
+
+input,button{
+    margin:5px;
+    padding:8px;
+    border-radius:6px;
+    border:none;
+}
+
+button{
+    background:#00bcd4;
+    color:white;
+    cursor:pointer;
+}
+
+/* REGISTER SMALL */
+#registerBox{
+    font-size:12px;
+    margin-top:15px;
+    background:#1a1a1a;
+    padding:10px;
+    border-radius:8px;
+}
+
+/* APP */
+#app{ display:none; }
+
+table{
+    margin:auto;
+    border-collapse:collapse;
+}
+
+td,th{
+    border:1px solid white;
+    padding:8px;
+}
+
+/* Emoji animation */
+.emoji{
+    font-size:24px;
+    animation:jump 1s infinite alternate;
+}
+
+@keyframes jump{
+    from{transform:translateY(0)}
+    to{transform:translateY(-10px)}
+}
+
+.groupBox{
+    background:#222;
+    padding:10px;
+    margin:10px;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginBox">
+<h2>Đăng nhập</h2>
+
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Password"><br>
+
+<button onclick="login()">Đăng nhập</button>
+
+<!-- REGISTER SMALL -->
+<div id="registerBox">
+<h4>Đăng ký</h4>
+<input id="regEmail" placeholder="email"><br>
+<input id="regUser" placeholder="username"><br>
+<input id="regPass" type="password" placeholder="password"><br>
+<button onclick="register()">Tạo tài khoản</button>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+<h1>💰 Quản Lý Thu Chi <span class="emoji">😄</span></h1>
+
+<h3>Thêm khoản</h3>
+
+<input id="name" placeholder="Nội dung">
+<input id="money" type="number" placeholder="Số tiền">
+
+<select id="type">
+<option value="Thu">Thu</option>
+<option value="Chi">Chi</option>
+</select>
+
+<button onclick="add()">Thêm</button>
+
+<br><br>
+
+<table>
+<thead>
+<tr>
+<th>Nội dung</th>
+<th>Số tiền</th>
+<th>Loại</th>
+<th>Ngày</th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+
+<h2>🏆 Top thời gian sử dụng</h2>
+<div id="ranking"></div>
+
+<hr>
+
+<h2>👥 Nhóm riêng tư</h2>
+
+<input id="groupName" placeholder="Tên nhóm">
+<button onclick="createGroup()">Tạo nhóm</button>
+
+<div id="groups"></div>
+
+</div>
+
+<script>
+
+/* ======================
+   DATABASE LOCAL
+====================== */
+let users = JSON.parse(localStorage.getItem("users")) || {};
+let groups = JSON.parse(localStorage.getItem("groups")) || {};
+let currentUser=null;
+
+/* ADMIN ACCOUNT */
+users["admin"]={password:"admin123",role:"admin"};
+
+/* ======================
+   REGISTER
+====================== */
+function register(){
+
+let email=document.getElementById("regEmail").value;
+let user=document.getElementById("regUser").value;
+let pass=document.getElementById("regPass").value;
+
+if(!email||!user||!pass){
+alert("Nhập đủ thông tin");
+return;
+}
+
+users[user]={password:pass,role:"user"};
+localStorage.setItem("users",JSON.stringify(users));
+
+alert("Đăng ký thành công!");
+}
+
+/* ======================
+   LOGIN
+====================== */
+function login(){
+
+let user=document.getElementById("username").value;
+let pass=document.getElementById("password").value;
+
+if(users[user] && users[user].password===pass){
+
+currentUser=user;
+
+document.getElementById("loginBox").style.display="none";
+document.getElementById("app").style.display="block";
+
+startTimer();
+loadGroups();
+
+}else{
+alert("Sai tài khoản");
+}
+}
+
+/* ======================
+   ADD INCOME/EXPENSE
+====================== */
+function add(){
+
+let name=document.getElementById("name").value;
+let money=document.getElementById("money").value;
+let type=document.getElementById("type").value;
+
+let date=new Date().toLocaleDateString("vi-VN");
+
+let tr=document.createElement("tr");
+tr.innerHTML=`
+<td>${name}</td>
+<td>${money}</td>
+<td>${type}</td>
+<td>${date}</td>
+`;
+
+document.getElementById("list").appendChild(tr);
+}
+
+/* ======================
+   TIME RANKING
+====================== */
+let startTime;
+
+function startTimer(){
+startTime=Date.now();
+setInterval(updateRanking,3000);
+}
+
+function updateRanking(){
+
+let time=Math.floor((Date.now()-startTime)/1000);
+
+let data=JSON.parse(localStorage.getItem("timeRank"))||{};
+data[currentUser]=time;
+
+localStorage.setItem("timeRank",JSON.stringify(data));
+
+let html="";
+Object.entries(data)
+.sort((a,b)=>b[1]-a[1])
+.forEach(([u,t])=>{
+html+=`${u}: ${t}s<br>`;
+});
+
+document.getElementById("ranking").innerHTML=html;
+}
+
+/* ======================
+   GROUP SYSTEM (INVITE LINK)
+====================== */
+
+function createGroup(){
+
+let name=document.getElementById("groupName").value;
+
+let id=Math.random().toString(36).substring(2,10);
+
+groups[id]={
+name:name,
+members:[currentUser]
+};
+
+localStorage.setItem("groups",JSON.stringify(groups));
+
+alert("Link mời nhóm:\n"+location.href+"?group="+id);
+
+loadGroups();
+}
+
+function loadGroups(){
+
+let url=new URL(window.location.href);
+let invite=url.searchParams.get("group");
+
+if(invite && groups[invite]){
+if(!groups[invite].members.includes(currentUser)){
+groups[invite].members.push(currentUser);
+localStorage.setItem("groups",JSON.stringify(groups));
+}
+}
+
+let html="";
+
+for(let id in groups){
+
+if(groups[id].members.includes(currentUser)){
+html+=`
+<div class="groupBox">
+<h3>${groups[id].name}</h3>
+<p>Chỉ người có link mới thấy</p>
+</div>`;
+}
+}
+
+document.getElementById("groups").innerHTML=html;
+}
+
+</script>
+
+</body>
+</html>
